@@ -1,0 +1,7 @@
+/build/
+*.lst
+*.sym
+*.EXE
+*.img
+.DS_Store
+__pycache__/
