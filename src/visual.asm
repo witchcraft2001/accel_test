@@ -425,8 +425,10 @@ visual_all:	call out_nl
 		ld (o_abort),a
 		ret
 .go:		call gfx_enter
-		ret c
-		ld hl,tab_vis
+		jr nc,.gm
+		PRL "  cannot set the graphics mode: visual screens skipped"
+		ret
+.gm:		ld hl,tab_vis
 .lp:		ld a,(o_abort)
 		or a
 		jr nz,.end

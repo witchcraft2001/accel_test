@@ -1,5 +1,5 @@
 ; hot_bss.asm -- hot variables (WIN1, zeroed at start).  The MAME script reads at_state,
-; at_pass, at_fail and vis_no through the symbol file.
+; at_pass, at_fail and vis_held through the symbol file.
 hot_bss:
 cmd_ix		dw 0			; DSS command line (IX at entry)
 exe_p2		db 0			; program pages of WIN2/WIN3

@@ -628,6 +628,8 @@ drv_dbl:	ld hl,(t_dst)
 drv_probe:	ld a,(t_aux)
 		ld (k_setn.n),a
 		call k_setn
+		ld a,(t_dy)			; row of a VRAM destination
+		out (P_Y),a
 		ld hl,(t_src)
 		ex de,hl			; DE = source/destination for kd_fd6d, any for ed52
 		ld hl,(t_dst)

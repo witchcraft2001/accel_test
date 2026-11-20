@@ -12,7 +12,7 @@ rc_full:	dw txr_clr1, sc_clr_rows, sc_clr_cols, sc_clr_cpu
 		dw 0
 
 ; rectangles: w, h
-rc_rects:	db 8,200, 200,8, 16,16, 32,32, 64,64, 128,128, 0
+rc_rects:	db 8,200, 200,8, 16,16, 32,32, 64,64, 128,128, 0	; 128 right after 64: see rc_rect
 ; rectangle methods: name, rows body, columns body, CPU body, VRAM page of the
 ; accelerator bodies
 rc_kinds:	dw txr_fill, bd_rect_rows, bd_rect_cols, bd_rect_cpu
@@ -133,16 +133,26 @@ rc_rect:	ld hl,(rc_kind)
 		ld b,2
 		call rc_rect_one
 		call rc_set_cols
-		; CPU: skipped for 128 x 128 below 15 MHz (one rectangle would exceed the timer)
+		; CPU 128 x 128: one rectangle must fit the 74.9 ms timer period.  It takes
+		; 4 x the 64 x 64 time of the same method, which is still in rc_cpu (us x10):
+		; measured only if that was below 15 ms.
 		ld a,(bp_w)
 		cp 128
 		jr nz,.cpu
-		ld hl,(env_mhz)
-		ld de,1500
+		ld hl,(rc_cpu + 2)
+		ld a,h
+		or a
+		jr nz,.skip			; (also "none")
+		ld a,l
+		cp 2
+		jr c,.cpu
+		jr nz,.skip
+		ld hl,(rc_cpu)
+		ld de,150000 & #FFFF
 		or a
 		sbc hl,de
-		jr nc,.cpu
-		ld hl,#FFFF
+		jr c,.cpu
+.skip:		ld hl,#FFFF
 		ld (acc32),hl
 		ld (acc32 + 2),hl
 		jr .cset

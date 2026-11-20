@@ -24,9 +24,10 @@ txg_xor:	db "XOR (HL) RAM: parity x sizes",0
 txg_or:		db "OR (HL) RAM: parity x sizes",0
 txg_and:	db "AND (HL) RAM: parity x sizes",0
 txg_xor2:	db "XOR twice restores the block",0
-txg_count:	db "size latch: persistence, read once/write 3",0
+txg_count:	db "size and buffer: persist, 3 writes, HALT",0
 txc_persist:	db "fill with the size latched earlier",0
 txc_rw3:	db "one load written 3 times",0
+txc_keep:	db "buffer kept over LD B,B+EI+HALT",0
 txg_vert:	db "vertical modes on RAM: one byte",0
 txc_vfill:	db "LD E,E fill in RAM",0
 txc_vcopy:	db "LD A,A copy in RAM",0
@@ -39,7 +40,6 @@ txd_fd6d:	db "FD 6D (LD L,L after FD)",0
 txd_ed52:	db "ED 52 keeps the size",0
 txd_halt:	db "HALT switches the mode off",0
 txg_info:	db "observations",0
-txi_keep:	db "buffer kept over LD B,B+EI+HALT",0
 txi_dbl:	db "LD H,H + LD (HL),#C3",0
 txa_add:	db "ADD A,(HL) in the logic slot",0
 txa_adc:	db "ADC A,(HL) in the logic slot",0
@@ -71,6 +71,9 @@ txv_xor:	db "XOR (HL) into VRAM",0
 txv_bfill:	db "fill RAM #BFF8 -> VRAM #C000",0
 txv_bcopy:	db "copy into RAM #BFF8 -> VRAM",0
 txv_bsrc:	db "copy from RAM #BFF8 + VRAM",0
+txg_vdec:	db "decoder on VRAM: prefixed LD E,E",0
+txd_fd5b:	db "FD 5B (LD E,E after FD)",0
+txd_ed5b:	db "ED 5B (LD DE,(nn))",0
 
 ; visual
 txs_1:		db "horizontal fills",0

@@ -5,5 +5,6 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 command -v sjasmplus >/dev/null || { echo "sjasmplus not found" >&2; exit 1; }
 mkdir -p "$root/build"
 cd "$root/build"
+rm -f ACCTEST.EXE          # a failed build must not leave a stale EXE next to a new .sym
 sjasmplus --nologo --fullpath --lst=ACCTEST.lst --sym=ACCTEST.sym "$root/src/acctest.asm"
 echo "Built $root/build/ACCTEST.EXE ($(wc -c < ACCTEST.EXE) bytes)"

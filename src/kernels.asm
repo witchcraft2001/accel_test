@@ -133,6 +133,16 @@ kd_fd6d:	db #FD,#6D			; LD L,L behind FD (LD IYL,IYL); DE = source
 		ld (hl),a
 		ld b,b
 		ret
+; kd_fd5b / kd_ed5b: #5B (LD E,E, vertical fill) behind a prefix.  Run on VRAM: only
+; there a vertical fill differs from a plain write (16 rows instead of one byte).
+kd_fd5b:	db #FD,#5B			; LD E,E behind FD
+		ld (hl),c
+		ld b,b
+		ret
+kd_ed5b:	ld de,(t_dst)			; ED 5B nn nn
+		ld (hl),c
+		ld b,b
+		ret
 kd_ed52:	or a
 		db #ED,#52			; SBC HL,DE (#52 = LD D,D after the prefix)
 		add hl,de

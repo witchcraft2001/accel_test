@@ -1,8 +1,10 @@
 ; bench.asm -- micro-benchmarks (cold).
 ; Every line: the net cost of one operation = (time of R repetitions of the kernel) -
 ; (time of R repetitions of the same instruction stream with LD B,B in the mode slot,
-; i.e. plain single-byte accesses), divided by R.  "cycles" are 7 MHz accelerator
-; cycles (142.857 ns; 1 cycle = 3 T at 21 MHz), ns per operation, ns per byte, KB/s.
+; i.e. plain single-byte accesses), divided by R.  "cycles" are accelerator cycles: the
+; accelerator moves one byte per 6 ticks of the 42 MHz crystal = 7 MHz = 142.857 ns,
+; whatever the CPU clock is.  "T@21" is the same time in T-states of the 21 MHz CPU
+; clock (cycles x 3).  Then ns per operation, ns per byte, KB/s.
 ; CPU baselines subtract the empty loop instead.  "~" marks two runs differing > 1 %.
 
 nb_full:	dw 1,2,3,4,5,6,7,8,15,16,17,31,32,33,63,64,65,127,128,129,255,256,0
@@ -66,7 +68,25 @@ bm_print:	ld hl,(bm_real)
 		call div32x16
 		ld hl,(acc32)
 		ld (bm_c100),hl
-		ld a,2
+		ld hl,(bm_save)			; 32-bit copy for the speed-up lines
+		ld a,h
+		or l
+		jr z,.nsv
+		call acc_st_mem
+		ld hl,0
+		ld (bm_save),hl
+.nsv:		ld a,2
+		ld (o_frac),a
+		ld a,9
+		call out_fix
+		; T-states at 21 MHz x10 = net * 240 / R
+		ld hl,(bm_net)
+		call acc_ld_hl
+		ld bc,240
+		call mul32x16
+		ld bc,(bm_reps)
+		call div32x16
+		ld a,1
 		ld (o_frac),a
 		ld a,9
 		call out_fix
@@ -198,7 +218,7 @@ bm_partxt:	ld a,(bm_ptype)
 		add a,'0'
 		jp out_ch
 
-bm_header:	PRL "  operation            N addr     cycles       ns    ns/B    KB/s"
+bm_header:	PRL "  operation            N addr     cycles     T@21       ns    ns/B    KB/s"
 		ret
 
 ; bm_iter: for every parity code of the list DE and every size of (bm_list): call HL
@@ -323,35 +343,36 @@ bm_keep:	ld hl,(bm_n)
 		ld (bm_n),hl
 		ret
 
-; bb_tab: single benchmark lines.  body, patch, mode, map, vpage, hl, de, y, n, name
-	MACRO BB p_body, p_patch, p_mode, p_map, p_vpage, p_hl, p_de, p_y, p_n, p_name
+; bb_tab: single benchmark lines.  body, patch, mode, map, vpage, hl, de, y, n, name,
+; save (0, or where to keep the cycles x100 as 32 bits for the summary)
+	MACRO BB p_body, p_patch, p_mode, p_map, p_vpage, p_hl, p_de, p_y, p_n, p_name, p_save
 		dw p_body, p_patch
 		db p_mode, p_map, p_vpage
 		dw p_hl, p_de
 		db p_y
-		dw p_n, p_name
+		dw p_n, p_name, p_save
 	ENDM
-BB_SIZE		equ 16
+BB_SIZE		equ 18
 
-bb_ram:		BB bd_fill, k_fill.m, OP_FILL, MAP_ARENA, 0, #BFF0, 0, 0, 16, txb_fillnc
-		BB bd_fill, k_fill.m, OP_FILL, MAP_ARENA, 0, #BFF8, 0, 0, 16, txb_fillcr
-		BB bd_fill, k_fill.m, OP_FILL, MAP_ARENA, 0, #BF80, 0, 0, 256, txb_fillcr
-		BB bd_copy, k_copy.m, OP_COPY, MAP_ARENA, 0, #BFF8, #9000, 0, 16, txb_copysc
-		BB bd_copy, k_copy.m, OP_COPY, MAP_ARENA, 0, #9000, #BFF8, 0, 16, txb_copydc
-		BB bd_copy, k_copy.m, OP_COPY, MAP_ARENA, 0, #BF80, #9000, 0, 256, txb_copysc
-		BB bd_copy, k_copy.m, OP_COPY, MAP_ARENA, 0, #9000, #BF80, 0, 256, txb_copydc
-		BB bd_copy, k_copy.m, OP_COPY, MAP_ARENA, 0, #90F8, #9208, 0, 16, txb_copy256
-		BB bd_cpu_ldir, 0, 0, MAP_ARENA, 0, ARENA_A, ARENA_B, 0, 256, txb_ldir
-		BB bd_cpu_ldir, 0, 0, MAP_ARENA, 0, ARENA_A, ARENA_B, 0, 16, txb_ldir
-		BB bd_cpu_fill, 0, 0, MAP_ARENA, 0, ARENA_F, 0, 0, 256, txb_cfill
-		BB bd_cpu_fill_ldir, 0, 0, MAP_ARENA, 0, ARENA_F, 0, 0, 256, txb_cfldir
+bb_ram:		BB bd_fill, k_fill.m, OP_FILL, MAP_ARENA, 0, #BFF0, 0, 0, 16, txb_fillnc, 0
+		BB bd_fill, k_fill.m, OP_FILL, MAP_ARENA, 0, #BFF8, 0, 0, 16, txb_fillcr, 0
+		BB bd_fill, k_fill.m, OP_FILL, MAP_ARENA, 0, #BF80, 0, 0, 256, txb_fillcr, 0
+		BB bd_copy, k_copy.m, OP_COPY, MAP_ARENA, 0, #BFF8, #9000, 0, 16, txb_copysc, 0
+		BB bd_copy, k_copy.m, OP_COPY, MAP_ARENA, 0, #9000, #BFF8, 0, 16, txb_copydc, 0
+		BB bd_copy, k_copy.m, OP_COPY, MAP_ARENA, 0, #BF80, #9000, 0, 256, txb_copysc, 0
+		BB bd_copy, k_copy.m, OP_COPY, MAP_ARENA, 0, #9000, #BF80, 0, 256, txb_copydc, 0
+		BB bd_copy, k_copy.m, OP_COPY, MAP_ARENA, 0, #90F8, #9208, 0, 16, txb_copy256, 0
+		BB bd_cpu_ldir, 0, 0, MAP_ARENA, 0, ARENA_A, ARENA_B, 0, 256, txb_ldir, sum_cpu_copy
+		BB bd_cpu_ldir, 0, 0, MAP_ARENA, 0, ARENA_A, ARENA_B, 0, 16, txb_ldir, 0
+		BB bd_cpu_fill, 0, 0, MAP_ARENA, 0, ARENA_F, 0, 0, 256, txb_cfill, 0
+		BB bd_cpu_fill_ldir, 0, 0, MAP_ARENA, 0, ARENA_F, 0, 0, 256, txb_cfldir, sum_cpu_fill
 		dw 0
-bb_vram:	BB bd_cpu_vline, 0, 0, MAP_VRAM, VP_NORM, #C060, 0, 0, 256, txb_cvline
-		BB bd_cpu_vline, 0, 0, MAP_VRAM, VP_NORM, #C060, 0, 0, 16, txb_cvline
-		BB bd_cpu_ldir, 0, 0, MAP_VRAM, VP_NORM, #8100, #C020, 30, 256, txb_cldirv
-		BB bd_cpu_ldir, 0, 0, MAP_VRAM, VP_NORM, #C010, #C150, 30, 256, txb_cldirvv
-		BB bd_copy, k_copy.m, OP_COPY, MAP_VRAM, VP_NORM, #BFF8, #C020, 30, 16, txb_r2vcr
-		BB bd_fill, k_fill.m, OP_FILL, MAP_VRAM, VP_NORM, #BFF8, 0, 30, 16, txb_fillrv
+bb_vram:	BB bd_cpu_vline, 0, 0, MAP_VRAM, VP_NORM, #C060, 0, 0, 256, txb_cvline, 0
+		BB bd_cpu_vline, 0, 0, MAP_VRAM, VP_NORM, #C060, 0, 0, 16, txb_cvline, 0
+		BB bd_cpu_ldir, 0, 0, MAP_VRAM, VP_NORM, #8100, #C020, 30, 256, txb_cldirv, 0
+		BB bd_cpu_ldir, 0, 0, MAP_VRAM, VP_NORM, #C010, #C150, 30, 256, txb_cldirvv, 0
+		BB bd_copy, k_copy.m, OP_COPY, MAP_VRAM, VP_NORM, #BFF8, #C020, 30, 16, txb_r2vcr, 0
+		BB bd_fill, k_fill.m, OP_FILL, MAP_VRAM, VP_NORM, #BFF8, 0, 30, 16, txb_fillrv, 0
 		dw 0
 
 ; bb_run: run the table at HL.
@@ -390,6 +411,9 @@ bb_run:		ld a,(hl)
 		ld l,(ix+14)
 		ld h,(ix+15)
 		ld (cur_name),hl
+		ld l,(ix+16)
+		ld h,(ix+17)
+		ld (bm_save),hl
 		ld a,#A5
 		ld (bp_c),a
 		ld de,BB_SIZE
@@ -502,8 +526,9 @@ bv_common:	call bm_keep
 ; ---------------------------------------------------------------- sections
 bench_all:	call out_nl
 		PRL "== Benchmarks: accelerator, net cost per operation =="
-		PRL "  cycles = 7 MHz cycles (142.9 ns, 3 T at 21 MHz); a = destination addr & 3;"
-		PRL "  s/d = source/destination address & 3.  Timer: CTC, 1 count = 8 cycles."
+		PRL "  cycles: accelerator cycles, 42 MHz / 6 = 7 MHz, 142.9 ns (not the CPU clock)"
+		PRL "  T@21: the same in T-states of the 21 MHz CPU clock (cycles x 3);"
+		PRL "  a = destination address & 3; s/d = source/destination address & 3."
 		call bm_header
 		ld hl,nb_full
 		ld a,(opt_quick)
@@ -602,7 +627,7 @@ bench_summary:	ld a,(o_abort)
 		or a
 		ret nz
 		call out_nl
-		PRL "== Summary (RAM, cycles = 7 MHz accelerator cycles, x.xx) =="
+		PRL "== Summary (RAM; accelerator cycles, 1 cycle = 142.9 ns = 3 T at 21 MHz) =="
 		; index of N=16 and N=256 in the list, list length
 		ld hl,(sum_list)
 		ld bc,0
@@ -679,9 +704,49 @@ bench_summary:	ld a,(o_abort)
 		ld a,d
 		call sum_pen_row
 		call out_nl
-		PRL "  Base firmware: 1.00 per byte (fill), 2.00 (copy), no odd penalty;"
-		PRL "  a 2-byte path: ~0.50 / ~1.00 per byte, plus a cost for odd starts and sizes."
+		PR "  speed-up over CPU LDIR at N=256: fill "
+		ld hl,sum_fill
+		ld de,sum_cpu_fill
+		call sum_speed
+		PR ", copy "
+		ld hl,sum_copy
+		ld de,sum_cpu_copy
+		call sum_speed
+		call out_nl
+		PRL "  The cost is net of the one plain access per phase that any code makes:"
+		PRL "  1 byte per cycle shows as N-1 (fill) and 2N-2 (copy) cycles, no odd penalty;"
+		PRL "  2 bytes per cycle halve the slope and add a cycle for an odd start or size."
 		ret
+
+; sum_speed: HL = table (row 0), DE = CPU cycles x100 (32 bit): print CPU / accelerator
+; at N = 256 as "x.xx" + "x", or "-".
+sum_speed:	ld (sum_row),hl
+		push de
+		ld a,(sum_i256)
+		inc a
+		jr z,.none
+		ld a,(sum_i256)
+		call sum_get			; HL = accelerator cycles x100
+		ld a,h
+		or l
+		jr z,.none
+		ex (sp),hl			; HL = CPU value, (sp) = divisor
+		call acc_ld_mem
+		call acc_is_zero
+		jr z,.none
+		ld bc,100
+		call mul32x16
+		pop bc
+		call div32x16
+		ld a,2
+		ld (o_frac),a
+		xor a
+		call out_fix
+		ld a,'x'
+		jp out_ch
+.none:		pop de
+		ld a,'-'
+		jp out_ch
 
 ; sum_row_ptr: HL = HL + A * 2 * sum_len... (A = row index) -> HL = row pointer.
 sum_row_ptr:	or a
@@ -716,7 +781,15 @@ sum_line:	ld (sum_row),hl
 		or a
 		sbc hl,de			; c256 - c16 (x100, both unsigned: the sign
 		call sum_signed_c		; is the borrow, not bit 15)
-		ld bc,240
+		ld hl,(acc32)			; round to nearest: + 240 / 2
+		ld de,120
+		add hl,de
+		ld (acc32),hl
+		jr nc,.rn
+		ld hl,(acc32 + 2)
+		inc hl
+		ld (acc32 + 2),hl
+.rn:		ld bc,240
 		call div32x16
 		ld hl,(acc32)
 		ld (sum_slope),hl

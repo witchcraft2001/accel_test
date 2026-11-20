@@ -1,6 +1,7 @@
 -- mame_acctest.lua -- MAME "sprinter" driver for ACCTEST.EXE (started by run_mame.sh).
 -- Types B:\ACCTEST.EXE <ACC_ARGS> in the DSS file manager, takes a screenshot of every
--- visual screen while it is held (vis_held), waits for at_state (1 pass, 2 fail) and
+-- visual screen while it is held (vis_held), waits for at_state (1 pass, 2 fail), then
+-- for the program to exit, and
 -- writes ACC_OUT/report.txt ending with "RESULT: PASS|FAIL".
 -- Environment: ACC_SYM (symbol file), ACC_OUT (output directory), ACC_ARGS (options).
 
@@ -9,7 +10,6 @@ _G.__acctest_loaded = true
 
 local machine = manager.machine
 local cpu = machine.devices[":maincpu"]
-local prog = cpu.spaces["program"]
 local screen = machine.screens[":screen"]
 
 local SYM = os.getenv("ACC_SYM") or "build/ACCTEST.sym"

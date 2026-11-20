@@ -82,6 +82,9 @@ bm_ptype	db 0
 bm_par		db 0
 bm_n		dw 0
 bm_store	dw 0
+bm_save		dw 0			; where bm_print keeps cycles x100 (32 bit), 0 = nowhere
+sum_cpu_fill	dd 0			; CPU LD (HL),A + LDIR, 256 bytes
+sum_cpu_copy	dd 0			; CPU LDIR, 256 bytes
 bm_net		dw 0
 bm_c100		dw 0
 bm_list		dw 0

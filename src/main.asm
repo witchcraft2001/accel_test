@@ -362,7 +362,7 @@ upcase:		cp 'a'
 		ret
 
 ; ---------------------------------------------------------------- environment
-sec_env:	PRL "Units: 1 count = 1/875 kHz = 1.143 us = 8 cycles at 7 MHz = 24 T at 21 MHz."
+sec_env:	PRL "Timer: 1 count = 1/875 kHz = 1.143 us = 8 accelerator cycles = 24 T at 21 MHz."
 		PR "Pages: program "
 		ld a,(exe_p2)
 		call out_hexb
@@ -422,7 +422,7 @@ sec_env:	PRL "Units: 1 count = 1/875 kHz = 1.143 us = 8 cycles at 7 MHz = 24 T a
 .dv:		call div32x16			; kHz
 		ld bc,10
 		call div32x16			; 10 kHz units
-		PR "CPU: 98304 T loop in "
+		PR "CPU: 98304 T in "
 		ld hl,(env_cpu)
 		push hl
 		ld hl,(acc32)
@@ -435,7 +435,16 @@ sec_env:	PRL "Units: 1 count = 1/875 kHz = 1.143 us = 8 cycles at 7 MHz = 24 T a
 		ld a,2
 		ld b,0
 		call out_fix_hl
-		PRL " MHz effective (memory waits included)"
+		PR " MHz effective (waits included), turbo "
+		ld hl,(env_mhz)			; 3.5 MHz clock without turbo, 21 MHz with
+		ld de,400
+		or a
+		sbc hl,de
+		jr nc,.ton
+		PRL "off"
+		jr .tq
+.ton:		PRL "on"
+.tq:
 		ld a,(opt_quick)
 		or a
 		jr z,.nq

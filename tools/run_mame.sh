@@ -41,10 +41,10 @@ test)
 	cat "$OUT/report.txt" 2>/dev/null || { echo "no report; see $OUT/mame.log"; exit 1; }
 	grep -q '^RESULT: PASS' "$OUT/report.txt" && exit 0
 	# Known MAME divergences (the program is right, the emulator is not):
-	#  DD 49 / FD 49 -- the Z80 core is built with LOG_UNDOC; illegal_1() re-reads the
+	#  DD 49 / FD 49 / FD 5B -- the Z80 core is built with LOG_UNDOC; illegal_1() re-reads the
 	#  opcode through the M1 space for its log message, and that second, unprefixed
-	#  fetch of #49 switches the accelerator on.  A real Z80 has no such extra M1 cycle.
-	KNOWN='^  FAIL (DD 49|FD 49) '
+	#  fetch of #49 or #5B switches the accelerator on.  A real Z80 has no such extra M1 cycle.
+	KNOWN='^  FAIL (DD 49|FD 49|FD 5B) '
 	[ -f "$OUT/ACCTEST.LOG" ] || exit 1
 	grep -q '^RESULT:' "$OUT/ACCTEST.LOG" || { echo "the log has no RESULT line"; exit 1; }
 	if grep '^  FAIL ' "$OUT/ACCTEST.LOG" | grep -E -v "$KNOWN"; then

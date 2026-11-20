@@ -373,8 +373,45 @@ tests_vram:	call out_nl
 		call vcase
 		jr .vt
 .vte:		call grp_end
+		ld hl,txg_vdec
+		call grp_begin
+		ld hl,kd_fd5b
+		ld de,txd_fd5b
+		call cs_vdec
+		ld hl,kd_ed5b
+		ld de,txd_ed5b
+		call cs_vdec
+		call grp_end
 		call vram_info
 		jp gfx_leave
+
+; cs_vdec: decoder probe HL (name DE) on VRAM: size 16 latched, one write at x = #D1,
+; row 200.  A decoder that takes the prefixed #5B for LD E,E fills rows 200..215.
+cs_vdec:	push hl
+		push de
+		call vt_reset
+		pop hl
+		ld (cur_name),hl
+		pop hl
+		ld (t_aux2),hl
+		ld hl,drv_probe
+		ld (t_drv),hl
+		ld a,16
+		ld (t_aux),a
+		ld hl,1
+		ld (t_n),hl
+		ld a,#B5
+		ld (t_val),a
+		ld a,200
+		ld (t_dy),a
+		ld hl,#C0D1
+		ld (t_dst),hl
+		ld (t_src),hl
+		ld bc,1
+		ld e,200
+		ld d,20
+		call sp_vrect
+		jp run_case
 
 ; vram_info: PORT_Y after vertical operations (observation).
 vram_info:	xor a
@@ -383,7 +420,8 @@ vram_info:	xor a
 		call vi_rows
 		PR ", PORT_Y after: "
 		call vi_mark
-		PRL " (model: rows 10..25, PORT_Y 26)"
+		call out_nl
+		PRL "         model: rows 10..25, PORT_Y 26"
 		ld a,1
 		call vi_probe
 		PR "  INFO LD A,A copy of 16 rows from row 10: written rows "

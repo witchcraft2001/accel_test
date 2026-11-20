@@ -539,7 +539,7 @@ logic_grp:	ld (cur_op),a
 		jp grp_end
 
 ; size handling: 0 = 256 is in the matrices; here: the size persists, one load
-; written three times.
+; written three times, the buffer survives LD B,B + EI + HALT.
 tests_count:	ld hl,txg_count
 		call grp_begin
 		ld hl,txc_persist
@@ -576,6 +576,17 @@ tests_count:	ld hl,txg_count
 		inc h
 		pop bc
 		djnz .w
+		call run_case
+		; the buffer survives LD B,B + EI + HALT (the DSS ISR runs in between)
+		ld hl,txc_keep
+		ld (cur_name),hl
+		call info_copy_setup
+		xor a
+		ld (t_info),a
+		ld hl,drv_bufkeep
+		ld (t_drv),hl
+		ld a,40
+		call info_n
 		call run_case
 		jp grp_end
 .persist:	push de
@@ -715,15 +726,6 @@ tests_info:	call out_nl
 		PRL "== Observations (behaviour outside the documented protocol) =="
 		ld hl,txg_info
 		call grp_begin
-		; buffer kept across LD B,B + EI + HALT (the DSS ISR runs in between)
-		ld hl,txi_keep
-		ld (cur_name),hl
-		call info_copy_setup
-		ld hl,drv_bufkeep
-		ld (t_drv),hl
-		ld a,40
-		call info_n
-		call run_case
 		; LD H,H at an even and an odd address
 		ld a,(opt_noh)
 		or a
